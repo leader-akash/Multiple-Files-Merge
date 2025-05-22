@@ -1,4 +1,4 @@
-// Updated accept to include .ppt, .pptx, .xls, .xlsx: accept=".pdf,.doc,.docx,.rtf,.txt,.ppt,.pptx,.xls,.xlsx".
+//  accept to include .ppt, .pptx, .xls, .xlsx: accept=".pdf,.doc,.docx,.rtf,.txt,.ppt,.pptx,.xls,.xlsx".
 
 
 
@@ -347,7 +347,7 @@ app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
 
 
-// ++++++++++++ Onlt pdf, docx files are supported *****************************
+// ++++++++++++ Only pdf, docx files are supported *****************************
 
 // const express = require('express');
 // const multer = require('multer');

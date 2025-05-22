@@ -3,8 +3,10 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
 
-// Set up pdfjs worker
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+// Use local worker script from pdfjs-dist
+import { GlobalWorkerOptions } from 'pdfjs-dist';
+
+GlobalWorkerOptions.workerSrc = '/node_modules/pdfjs-dist/build/pdf.worker.mjs';
 
 function PDFViewer({ pdfUrl }) {
   const [numPages, setNumPages] = useState(null);
@@ -12,6 +14,7 @@ function PDFViewer({ pdfUrl }) {
   const [error, setError] = useState(null);
 
   const onDocumentLoadSuccess = ({ numPages }) => {
+    console.log('PDF loaded successfully, pages:', numPages); // Debug
     setNumPages(numPages);
     setPageNumber(1);
     setError(null);
@@ -19,7 +22,7 @@ function PDFViewer({ pdfUrl }) {
 
   const onDocumentLoadError = (error) => {
     console.error('PDF load error:', error);
-    setError('Failed to load PDF preview. Please try again.');
+    setError(`Failed to load PDF preview: ${error.message}. The file may be corrupted or invalid.`);
   };
 
   const goToPreviousPage = () => {
@@ -67,6 +70,7 @@ function PDFViewer({ pdfUrl }) {
                 renderTextLayer={true}
                 renderAnnotationLayer={true}
                 width={Math.min(800, window.innerWidth * 0.8)} // Responsive width
+                renderMode="canvas" // Use canvas for better compatibility
               />
             </Document>
           </div>

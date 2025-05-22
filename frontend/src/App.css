@@ -35,6 +35,52 @@
   max-height: 80vh;
   overflow-y: auto;
 }
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* PDF page shadow */
+.react-pdf__Page {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Smooth transitions */
+button, input, select, textarea {
+  transition: all 0.15s ease;
+}
+
+/* Animation for file drop zone */
+@keyframes pulse {
+  0%, 100% {
+    border-color: #3b82f6;
+    background-color: rgba(59, 130, 246, 0.05);
+  }
+  50% {
+    border-color: #93c5fd;
+    background-color: rgba(147, 197, 253, 0.1);
+  }
+}
+
+.isDragging {
+  animation: pulse 1.5s infinite;
+}
 @keyframes logo-spin {
   from {
     transform: rotate(0deg);
