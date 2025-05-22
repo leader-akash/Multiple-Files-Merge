@@ -5,7 +5,7 @@ const MergeButton = ({ onMerge, disabled, isMerging }) => (
     onClick={onMerge}
     disabled={disabled}
     className={`w-full py-3 px-4 rounded-md font-medium flex items-center justify-center transition-colors ${
-      disabled ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-md'
+      disabled ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : ' text-blue-500 shadow-md'
     }`}
   >
     {isMerging ? (
