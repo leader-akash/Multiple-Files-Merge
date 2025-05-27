@@ -25,8 +25,42 @@ const PORT = process.env.PORT || 5000;
 // Configure Multer for file uploads with size limit
 const upload = multer({ 
   dest: 'uploads/',
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+  limits: { fileSize: 10000 * 1024 * 1024 } // 10000MB limit
 });
+
+// Multer error handling middleware
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({ error: 'File size limit exceeded ' });
+  }
+  next(err); // Pass other errors to default error handler
+});
+
+// Function to count pages in a PDF file
+async function countPdfPages(filePath) {
+  const pdfBytes = await fs.readFile(filePath);
+  const pdfDoc = await PDFDocument.load(pdfBytes);
+  return pdfDoc.getPageCount();
+}
+
+// Function to estimate pages for non-PDF files (simplified heuristic)
+async function estimateNonPdfPages(filePath, ext) {
+  if (ext === '.docx') {
+    const { value: htmlContent } = await mammoth.convertToHtml({ path: filePath });
+    // Rough estimate: assume ~500 words per page
+    const wordCount = htmlContent.split(/\s+/).length;
+    return Math.ceil(wordCount / 500) || 1;
+  } else if (ext === '.txt') {
+    const content = await fs.readFile(filePath, 'utf-8');
+    // Rough estimate: assume ~50 lines per page
+    const lineCount = content.split('\n').length;
+    return Math.ceil(lineCount / 50) || 1;
+  } else if (['.doc', '.rtf', '.ppt', '.pptx', '.xls', '.xlsx'].includes(ext)) {
+    // For simplicity, assume 1 page (could improve with more parsing)
+    return 1;
+  }
+  return 1;
+}
 
 // Ensure uploads directory exists
 const uploadDir = path.join(__dirname, 'uploads');
@@ -117,6 +151,32 @@ async function mergePDFs(pdfPaths, outputPath) {
 app.post('/api/merge', upload.array('files'), async (req, res) => {
   try {
     const files = req.files;
+    if (!files || files.length === 0) {
+      return res.status(400).json({ error: 'No files uploaded' });
+    }
+
+    // Count total pages
+    let totalPages = 0;
+    for (const file of files) {
+      const ext = path.extname(file.originalname).toLowerCase();
+      if (ext === '.pdf') {
+        totalPages += await countPdfPages(file.path);
+      } else {
+        totalPages += await estimateNonPdfPages(file.path, ext);
+      }
+    }
+
+    // Check page limit
+    if (totalPages > 100) {
+      for (const file of files) {
+        await fs.unlink(file.path).catch(() => {});
+      }
+      return res.status(403).json({
+        error: ` Total page count ${totalPages} exceeds limit of 100. Please purchase a subscription to merge more pages.`,
+        showPurchase: true
+      });
+    }
+
     const pdfPaths = [];
 
     // Convert each file to PDF based on type
