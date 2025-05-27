@@ -14,7 +14,7 @@ const PurchaseButton = () => {
         // Redirect to Stripe Checkout
         window.location.href = sessionUrl;
     } catch (error) {
-        console.error("Purchase failed:", error);
+        console.error("Purchase failed:", error); 
     }
 };
 
