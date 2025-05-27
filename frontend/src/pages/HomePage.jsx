@@ -79,8 +79,10 @@ function HomePage() {
                 body: formData,
             });
 
+
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
+                setIsPurchaseButton(true)
                 throw new Error(errorData.error || `Server responded with ${response.status}`);
             }
 
@@ -95,6 +97,7 @@ function HomePage() {
             setPageNumber(1);
             showMessage('Files merged successfully!', 'success');
         } catch (error) {
+            console.log('errrrr', error)
             setPdfError(error.message);
             showMessage(`Failed to merge files: ${error.message}`, 'error');
         } finally {
