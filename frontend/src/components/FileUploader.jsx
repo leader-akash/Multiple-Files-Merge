@@ -13,6 +13,12 @@ function FileUploader({ onFilesSelected, files }) {
       'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
       'application/vnd.ms-excel': ['.xls'],
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      // 'image/jpeg': ['.jpg', '.jpeg'],
+      // 'image/png': ['.png'],
+      // 'image/gif': ['.gif'],
+      // 'image/bmp': ['.bmp'],
+      // 'image/webp': ['.webp'],
+
     },
     multiple: true,
     onDrop: (acceptedFiles) => {
@@ -24,9 +30,8 @@ function FileUploader({ onFilesSelected, files }) {
     <div>
       <div
         {...getRootProps()}
-        className={`border-2 border-dashed p-6 rounded-lg text-center ${
-          isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-gray-50'
-        }`}
+        className={`border-2 border-dashed p-6 rounded-lg text-center ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-gray-50'
+          }`}
       >
         <input {...getInputProps()} />
         {isDragActive ? (

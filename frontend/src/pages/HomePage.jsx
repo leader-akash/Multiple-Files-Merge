@@ -161,7 +161,7 @@ function HomePage() {
             <MergeButton onMerge={handleMerge} disabled={files.length > 3 || files?.length === 0 || isMerging} isMerging={isMerging} />
             <PurchaseButton />
             
-            <Message message={message} /> 
+            <Message message={message} />
             <PdfPreviewModal
                 isOpen={isPreviewOpen}
                 previewUrl={previewUrl}

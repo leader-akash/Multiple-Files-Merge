@@ -1,9 +1,10 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import Pricing from '../components/PlanCards'
 import { useState } from 'react';
 import PricingPlan from '../components/PlanCards';
 import { IoArrowBack } from "react-icons/io5";
-import {useNavigate} from "react-router-dom"
+import { useNavigate } from "react-router-dom"
+import axios from 'axios';
 
 const PurchasePlans = () => {
 
@@ -37,12 +38,32 @@ const PurchasePlans = () => {
     const [error, setError] = useState(null);
 
 
+    const fetchPlans = async () => {
+        try {
+            const response = await axios.get('http://localhost:5000/api/plans');
+            console.log('called')
+            console.log('response', response)
+            setPackages(response.data);
+            setLoading(false);
+        } catch (err) {
+            setError('Failed to load plans', err);
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchPlans();
+    }, []);
+
+    console.log('packages', packages)
+
+
 
     return (
         <section id="pricing" className="py-20">
             <button className='border flex items-center px-2 bg-green-100 ' onClick={() => navigate("/")}>
                 <IoArrowBack />
-              Back  
+                Back
             </button>
             <div className="container mx-auto px-4">
                 <div className="text-center max-w-3xl mx-auto mb-16">
@@ -55,7 +76,7 @@ const PurchasePlans = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-                    {plans.map((plan, index) => (
+                    {packages.map((plan, index) => (
                         <PricingPlan
                             key={index}
                             data={plan}

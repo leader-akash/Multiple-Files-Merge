@@ -10,11 +10,14 @@ const PricingPlan = ({
 }) => {
 
 
-     const handlePurchase = async (id, price) => {
+     const handlePurchase = async (planId, price, userId) => {
         const amount = price;
 
+        const user =  {
+          userId :"6836bb6c9fca50c55ca90ffe"}
+
         try {
-            const response = await axios.post(`http://localhost:5000/api/payment/create-payment-intent`, { amount });
+            const response = await axios.post(`http://localhost:5000/api/subscription`, { planId, user });
 
             // Assuming backend sends session URL back in response.data.url
             const sessionUrl = response.data.url;
@@ -42,10 +45,10 @@ const PricingPlan = ({
           {data?.price !== 'Custom' && <span className="text-gray-500">/ {data?.title}</span>}
         </div>
 
-          <button onClick={() => handlePurchase(data?.planId, data?.price)}
+          <button onClick={() => handlePurchase(data?._id, data?.price)}
             className={`w-full py-6 {isPopular ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-800 hover:bg-gray-900'}`}
           >
-            {data?.buttonName}
+            Select Plan
           </button>
 
       </div>
