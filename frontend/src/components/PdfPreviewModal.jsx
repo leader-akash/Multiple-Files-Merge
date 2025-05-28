@@ -18,15 +18,48 @@ const PdfPreviewModal = ({
 }) => {
   const canvasRef = useRef(null);
 
+  // useEffect(() => {
+  //   if (!isOpen || !previewUrl || !canvasRef.current) return;
+
+  //   const renderPdf = async () => {
+  //     try {
+  //       const arrayBuffer = await fetch(previewUrl).then((res) => res.arrayBuffer());
+  //       const pdfDoc = await PDFDocument.load(arrayBuffer);
+  //       const pdfBytes = await pdfDoc.save();
+
+  //       const pdf = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
+  //       setNumPages(pdf.numPages);
+
+  //       const page = await pdf.getPage(pageNumber);
+  //       const viewport = page.getViewport({ scale });
+
+  //       const canvas = canvasRef.current;
+  //       const context = canvas.getContext('2d');
+  //       canvas.height = viewport.height;
+  //       canvas.width = viewport.width;
+
+  //       await page.render({ canvasContext: context, viewport }).promise;
+  //     } catch (error) {
+  //       console.error('PDF load error:', error);
+  //     }
+  //   };
+
+  //   renderPdf();
+  // }, [isOpen, previewUrl, pageNumber, scale, setNumPages]);
+
+
+  // In PdfPreviewModal.js
   useEffect(() => {
     if (!isOpen || !previewUrl || !canvasRef.current) return;
 
     const renderPdf = async () => {
       try {
+        // First try rendering with pdf-lib (better for images)
         const arrayBuffer = await fetch(previewUrl).then((res) => res.arrayBuffer());
         const pdfDoc = await PDFDocument.load(arrayBuffer);
         const pdfBytes = await pdfDoc.save();
 
+        // Fallback to pdf.js if needed
         const pdf = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
         setNumPages(pdf.numPages);
 
@@ -40,7 +73,22 @@ const PdfPreviewModal = ({
 
         await page.render({ canvasContext: context, viewport }).promise;
       } catch (error) {
-        console.error('PDF load error:', error);
+        console.error('PDF render error:', error);
+        // Try alternative rendering for image-heavy PDFs
+        try {
+          const img = document.createElement('img');
+          img.src = previewUrl;
+          img.onload = () => {
+            const canvas = canvasRef.current;
+            const ctx = canvas.getContext('2d');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+          };
+        } catch (fallbackError) {
+          console.error('Fallback render failed:', fallbackError);
+          setPdfError('Failed to render document. The file may contain unsupported elements.');
+        }
       }
     };
 
@@ -105,7 +153,21 @@ const PdfPreviewModal = ({
               <p className="text-sm">{pdfError}</p>
             </div>
           ) : (
-            <canvas ref={canvasRef} className="border shadow-md bg-white" />
+            <>
+              <canvas ref={canvasRef} className="border shadow-md bg-white" />
+              {/* Fallback image display for image-only PDFs */}
+              <img
+                src={previewUrl}
+                alt="PDF Preview"
+                className="hidden"
+                onError={(e) => {
+                  // If canvas fails, try to show as image
+                  if (pdfError) {
+                    e.target.classList.remove('hidden');
+                  }
+                }}
+              />
+            </>
           )}
         </div>
 

@@ -36,7 +36,7 @@ function HomePage() {
     const handleFiles = useCallback(
         (newFiles) => {
             const validFiles = Array.from(newFiles).filter((file) =>
-                ['.pdf', '.doc', '.docx', '.rtf', '.txt', '.ppt', '.pptx', '.xls', '.xlsx'].includes(
+                ['.pdf', '.doc', '.docx', '.rtf', '.txt', '.ppt', '.pptx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png', '.bmp', '.gif'].includes(
                     file.name.toLowerCase().slice(file.name.lastIndexOf('.'))
                 )
             );

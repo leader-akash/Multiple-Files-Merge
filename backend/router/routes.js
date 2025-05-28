@@ -434,7 +434,9 @@ router.post('/merge', authenticateToken, upload.array('files'), async (req, res)
         await convertWithLibreOffice(file.path, pdfPath);
       } else if (ext === '.txt') {
         await convertTxtToPDF(file.path, pdfPath);
-      } else {
+       } else if (['.jpg', '.jpeg', '.png', '.bmp', '.gif'].includes(ext)) {
+        await convertImageToPDF(file.path, pdfPath);
+       } else {
         throw new Error(`Unsupported file type: ${ext}`);
       }
       pdfPaths.push(pdfPath);
