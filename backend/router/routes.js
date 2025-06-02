@@ -5,26 +5,24 @@ const { User, Subscription, Plan, Transaction } = require('../modal/models');
 const Stripe = require('stripe');
 const stripe = Stripe(process.env.STRIPE_KEY);
 const multer = require('multer');
-const puppeteer = require('puppeteer');
 const { PDFDocument } = require('pdf-lib');
 const fs = require('fs').promises;
 const path = require('path');
 const cors = require('cors');
 const mammoth = require('mammoth');
 const libre = require('libreoffice-convert');
-// const { authenticateToken } = require('./middleware/auth');
+const sharp = require('sharp');
+const puppeteer = require('puppeteer');
 
-
-const app = express(); 
+const app = express();
 
 // Authentication Middleware
 function authenticateToken(req, res, next) {
   const token = req.header('Authorization')?.replace('Bearer ', '');
   if (!token) {
-    req.user = null; // No user for unauthenticated requests
+    req.user = null;
     return next();
   }
-
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
@@ -42,14 +40,9 @@ router.post('/signup', async (req, res) => {
     if (existingUser) {
       return res.status(400).json({ error: 'Email already exists' });
     }
-
     const user = new User({ email, password });
     await user.save();
-
-    const token = jwt.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET, {
-      expiresIn: '7d',
-    });
-
+    const token = jwt.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.status(201).json({ token, user: { id: user._id, email: user.email, role: user.role } });
   } catch (error) {
     res.status(500).json({ error: `Signup failed: ${error.message}` });
@@ -64,16 +57,11 @@ router.post('/login', async (req, res) => {
     if (!user) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
-
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
-
-    const token = jwt.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET, {
-      expiresIn: '7d',
-    });
-
+    const token = jwt.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.json({ token, user: { id: user._id, email: user.email, role: user.role } });
   } catch (error) {
     res.status(500).json({ error: `Login failed: ${error.message}` });
@@ -90,283 +78,224 @@ router.get('/plans', async (req, res) => {
   }
 });
 
-
 // Configure Multer for file uploads with size limit
-const upload = multer({ 
+const upload = multer({
   dest: 'uploads/',
-  limits: { fileSize: 10000 * 1024 * 1024 } // 10000MB limit
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
 });
 
 // Multer error handling middleware
 app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
-    return res.status(400).json({ error: 'File size limit exceeded ' });
+    return res.status(400).json({ error: 'File size limit exceeded (50MB max)' });
   }
-  next(err); // Pass other errors to default error handler
+  next(err);
 });
 
 // Function to count pages in a PDF file
 async function countPdfPages(filePath) {
-  const pdfBytes = await fs.readFile(filePath);
-  const pdfDoc = await PDFDocument.load(pdfBytes);
-  return pdfDoc.getPageCount();
+  try {
+    const pdfBytes = await fs.readFile(filePath);
+    const pdfDoc = await PDFDocument.load(pdfBytes);
+    return pdfDoc.getPageCount();
+  } catch (error) {
+    throw new Error(`Failed to count PDF pages: ${error.message}`);
+  }
 }
 
-// Function to estimate pages for non-PDF files (simplified heuristic)
+// Function to estimate pages for non-PDF files
 async function estimateNonPdfPages(filePath, ext) {
-  if (ext === '.docx') {
-    const { value: htmlContent } = await mammoth.convertToHtml({ path: filePath });
-    // Rough estimate: assume ~500 words per page
-    const wordCount = htmlContent.split(/\s+/).length;
-    return Math.ceil(wordCount / 500) || 1;
-  } else if (ext === '.txt') {
-    const content = await fs.readFile(filePath, 'utf-8');
-    // Rough estimate: assume ~50 lines per page
-    const lineCount = content.split('\n').length;
-    return Math.ceil(lineCount / 50) || 1;
-  } else if (['.doc', '.rtf', '.ppt', '.pptx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png', '.bmp', '.gif'].includes(ext)) {
-    // For images and other non-PDF files, assume 1 page per file
+  try {
+    if (ext === '.docx') {
+      const { value: htmlContent } = await mammoth.convertToHtml({ path: filePath });
+      const wordCount = htmlContent.split(/\s+/).length;
+      return Math.ceil(wordCount / 500) || 1;
+    } else if (ext === '.txt') {
+      const content = await fs.readFile(filePath, 'utf-8');
+      const lineCount = content.split('\n').length;
+      return Math.ceil(lineCount / 50) || 1;
+    } else if (['.doc', '.rtf', '.ppt', '.pptx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png', '.bmp', '.gif'].includes(ext)) {
+      return 1;
+    }
     return 1;
+  } catch (error) {
+    throw new Error(`Failed to estimate pages: ${error.message}`);
   }
-  return 1;
 }
 
 // Ensure uploads directory exists
 const uploadDir = path.join(__dirname, 'uploads');
 fs.mkdir(uploadDir, { recursive: true });
 
-// Function to convert files to PDF using LibreOffice (for .doc, .rtf, .ppt, .pptx, .xls, .xlsx)
+// Function to convert files to PDF using LibreOffice
 async function convertWithLibreOffice(inputPath, outputPath) {
   return new Promise((resolve, reject) => {
-    fs.readFile(inputPath).then((buf) => {
-      libre.convert(buf, '.pdf', undefined, (err, pdfBuf) => {
-        if (err) {
-          return reject(err);
-        }
-        fs.writeFile(outputPath, pdfBuf).then(() => resolve()).catch(reject);
-      });
-    }).catch(reject);
+    fs.readFile(inputPath)
+      .then((buf) => {
+        libre.convert(buf, '.pdf', undefined, (err, pdfBuf) => {
+          if (err) {
+            return reject(new Error(`LibreOffice conversion failed: ${err.message}`));
+          }
+          fs.writeFile(outputPath, pdfBuf)
+            .then(() => resolve())
+            .catch(reject);
+        });
+      })
+      .catch(reject);
   });
 }
 
 // Function to convert DOCX to PDF using Mammoth and Puppeteer
 async function convertDocxToPDF(filePath, outputPath) {
-  const browser = await puppeteer.launch({ headless: 'new' });
-  const page = await browser.newPage();
-
-  // Extract content from DOCX using mammoth
-  const { value: htmlContent } = await mammoth.convertToHtml({ path: filePath });
-  
-  // Set HTML content in Puppeteer
-  await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-
-  // Get content dimensions to infer orientation
-  const dimensions = await page.evaluate(() => {
-    const { width, height } = document.body.getBoundingClientRect();
-    return { width, height };
-  });
-
-  // Set PDF page size based on content (approximate orientation)
-  const isLandscape = dimensions.width > dimensions.height;
-  await page.pdf({
-    path: outputPath,
-    width: isLandscape ? '842px' : '595px', // A4 landscape or portrait
-    height: isLandscape ? '595px' : '842px',
-    printBackground: true,
-    margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' },
-  });
-
-  await browser.close();
+  try {
+    const browser = await puppeteer.launch({ headless: 'new', timeout: 30000 });
+    const page = await browser.newPage();
+    const { value: htmlContent } = await mammoth.convertToHtml({ path: filePath });
+    await page.setContent(htmlContent, { waitUntil: 'networkidle0', timeout: 15000 });
+    const dimensions = await page.evaluate(() => {
+      const { width, height } = document.body.getBoundingClientRect();
+      return { width, height };
+    });
+    const isLandscape = dimensions.width > dimensions.height;
+    await page.pdf({
+      path: outputPath,
+      width: isLandscape ? '842px' : '595px',
+      height: isLandscape ? '595px' : '842px',
+      printBackground: true,
+      margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' },
+    });
+    await browser.close();
+  } catch (error) {
+    throw new Error(`DOCX to PDF conversion failed: ${error.message}`);
+  }
 }
 
 // Function to convert TXT to PDF using Puppeteer
 async function convertTxtToPDF(filePath, outputPath) {
-  const browser = await puppeteer.launch({ headless: 'new' });
-  const page = await browser.newPage();
-
-  // Read text content and wrap in basic HTML
-  const content = await fs.readFile(filePath, 'utf-8');
-  await page.setContent(`<pre style="font-family: Arial, sans-serif; padding: 20px;">${content}</pre>`, {
-    waitUntil: 'networkidle0',
-  });
-
-  // Use default A4 portrait for TXT (no inherent orientation)
-  await page.pdf({
-    path: outputPath,
-    format: 'A4',
-    printBackground: true,
-    margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' },
-  });
-
-  await browser.close();
-}
-
-// Function to convert images to PDF using Puppeteer
-async function convertImageToPDF(filePath, outputPath) {
-  const browser = await puppeteer.launch({ headless: 'new' });
-  const page = await browser.newPage();
-
-  // Load image in an HTML img tag
-  const imagePath = `file://${filePath}`;
-  await page.setContent(
-    `<div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
-       <img src="${imagePath}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
-     </div>`,
-    { waitUntil: 'networkidle0' }
-  );
-
-  // Get image dimensions to set PDF page size
-  const dimensions = await page.evaluate(() => {
-    const img = document.querySelector('img');
-    return { width: img.naturalWidth, height: img.naturalHeight };
-  });
-
-  // Set PDF page size to match image dimensions (with A4 constraints)
-  const isLandscape = dimensions.width > dimensions.height;
-  await page.pdf({
-    path: outputPath,
-    width: isLandscape ? '842px' : '595px', // A4 landscape or portrait
-    height: isLandscape ? '595px' : '842px',
-    printBackground: true,
-    margin: { top: '0px', right: '0px', bottom: '0px', left: '0px' },
-  });
-
-  await browser.close();
-}
-
-// Function to merge PDFs while preserving page sizes
-async function mergePDFs(pdfPaths, outputPath) {
-  const mergedPdf = await PDFDocument.create();
-  
-  for (const pdfPath of pdfPaths) {
-    const pdfBytes = await fs.readFile(pdfPath);
-    const pdf = await PDFDocument.load(pdfBytes);
-    const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
-    copiedPages.forEach((page) => mergedPdf.addPage(page));
-  }
-
-  const mergedPdfBytes = await mergedPdf.save();
-  await fs.writeFile(outputPath, mergedPdfBytes);
-}
-
-
-// Create Subscription
-router.post('/subscription', authenticateToken,  async (req, res) => {
   try {
-    const { planId } = req.body;
-    const userId = req.user.userId;
-
-
-    const plan = await Plan.findById(planId);
-    if (!plan) {
-      return res.status(404).json({ error: 'Plan not found' });
-    }
-
-    // Create Stripe subscription
-    const session = await stripe.checkout.sessions.create({
-      customer_email: (await User.findById(userId)).email,
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price: plan.stripePriceId,
-          quantity: 1,
-        },
-      ],
-      mode: 'subscription',
-      success_url: 'http://localhost:5173/?success=true',
-      cancel_url: 'http://localhost:5173/cancel',
+    const browser = await puppeteer.launch({ headless: 'new', timeout: 30000 });
+    const page = await browser.newPage();
+    const content = await fs.readFile(filePath, 'utf-8');
+    await page.setContent(`<pre style="font-family: Arial, sans-serif; padding: 20px;">${content}</pre>`, {
+      waitUntil: 'networkidle0',
+      timeout: 15000,
     });
-
-    // Create subscription record (pending)
-    const subscription = new Subscription({
-      userId,
-      planId,
-      stripeSubscriptionId: session.id,
-      status: 'pending',
-      startDate: new Date(),
+    await page.pdf({
+      path: outputPath,
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' },
     });
-    await subscription.save();
-
-    res.json({ url: session.url });
+    await browser.close();
   } catch (error) {
-    res.status(500).json({ error: `Failed to create subscription: ${error.message}` });
+    throw new Error(`TXT to PDF conversion failed: ${error.message}`);
   }
-});
+}
 
-// Stripe Webhook for Subscription Events
-router.post(
-  '/webhook',
-  express.raw({ type: 'application/json' }),
-  async (req, res) => {
-    const sig = req.headers['stripe-signature'];
-    let event;
+// Function to get file extension from filename or mimetype
+function getFileExtension(file) {
+  let ext = path.extname(file.originalname || '').toLowerCase();
+  if (!ext || ext === '.') {
+    console.warn(`Invalid extension for ${file.originalname}, falling back to mimetype`);
+    const mimeToExt = {
+      'image/jpeg': '.jpg',
+      'image/png': '.png',
+      'image/bmp': '.bmp',
+      'image/gif': '.gif',
+    };
+    ext = mimeToExt[file.mimetype] || '';
+  }
+  return ext;
+}
 
-    try {
-      event = stripe.webhooks.constructEvent(
-        req.body,
-        sig,
-        process.env.STRIPE_WEBHOOK_SECRET
-      );
-    } catch (err) {
-      return res.status(400).json({ error: `Webhook Error: ${err.message}` });
+// Function to convert images to PDF using pdf-lib
+async function convertImageToPDF(filePath, outputPath, originalFileName) {
+  try {
+    const ext = getFileExtension({ originalname: originalFileName, path: filePath });
+    console.log(`Processing image: ${originalFileName}, extension: ${ext}`);
+
+    if (!['.jpg', '.jpeg', '.png', '.bmp', '.gif'].includes(ext)) {
+      throw new Error(`Unsupported image format: ${ext || 'unknown'}. Supported formats: .jpg, .jpeg, .png, .bmp, .gif`);
     }
 
-    switch (event.type) {
-      case 'checkout.session.completed': {
-        const session = event.data.object;
-        const subscription = await Subscription.findOne({ stripeSubscriptionId: session.id });
-        if (subscription) {
-          subscription.status = 'active';
-          subscription.stripeSubscriptionId = session.subscription;
-          subscription.endDate = new Date(
-            session.subscription.created * 1000 + (await Plan.findById(subscription.planId)).name === 'weekly'
-              ? 7 * 24 * 60 * 60 * 1000
-              : subscription.planId.name === 'monthly'
-              ? 30 * 24 * 60 * 60 * 1000
-              : 365 * 24 * 60 * 60 * 1000
-          );
-          await subscription.save();
+    const imageBytes = await fs.readFile(filePath);
+    const metadata = await sharp(imageBytes).metadata().catch((err) => {
+      throw new Error(`Invalid or corrupted image: ${err.message}`);
+    });
+    console.log(`Image metadata: ${JSON.stringify(metadata)}`);
 
-          // Log transaction
-          const transaction = new Transaction({
-            userId: subscription.userId,
-            subscriptionId: subscription._id,
-            stripePaymentId: session.payment_intent || session.id,
-            amount: session.amount_total / 100,
-            status: 'succeeded',
-          });
-          await transaction.save();
-        }
-        break;
-      }
-      case 'customer.subscription.deleted': {
-        const subscription = await Subscription.findOne({
-          stripeSubscriptionId: event.data.object.id,
-        });
-        if (subscription) {
-          subscription.status = 'canceled';
-          subscription.endDate = new Date();
-          await subscription.save();
-        }
-        break;
-      }
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage();
+    let image;
+
+    // Timeout for image processing
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Image processing timed out')), 10000);
+    });
+
+    if (ext === '.jpg' || ext === '.jpeg') {
+      image = await Promise.race([pdfDoc.embedJpg(imageBytes), timeoutPromise]);
+    } else if (ext === '.png') {
+      image = await Promise.race([pdfDoc.embedPng(imageBytes), timeoutPromise]);
+    } else if (['.bmp', '.gif'].includes(ext)) {
+      const pngBuffer = await Promise.race([
+        sharp(imageBytes).png().resize({ width: 1920, withoutEnlargement: true }).toBuffer(),
+        timeoutPromise,
+      ]);
+      image = await Promise.race([pdfDoc.embedPng(pngBuffer), timeoutPromise]);
     }
 
-    res.json({ received: true });
+    const { width, height } = metadata;
+    const isLandscape = width > height;
+    const maxWidth = 595;
+    const maxHeight = 842;
+    const scale = Math.min(maxWidth / width, maxHeight / height, 1);
+    const scaledWidth = width * scale;
+    const scaledHeight = height * scale;
+
+    page.setSize(isLandscape ? maxHeight : maxWidth, isLandscape ? maxWidth : maxHeight);
+    page.drawImage(image, { x: 0, y: 0, width: scaledWidth, height: scaledHeight });
+
+    const pdfBytes = await pdfDoc.save();
+    await fs.writeFile(outputPath, pdfBytes);
+    console.log(`Image converted to PDF: ${outputPath}`);
+  } catch (error) {
+    console.error(`Image conversion error for ${originalFileName}: ${error.message}`);
+    throw error;
   }
-);
+}
 
-// Updated Merge Route with Subscription Check
+// Function to merge PDFs
+async function mergePDFs(pdfPaths, outputPath) {
+  try {
+    const mergedPdf = await PDFDocument.create();
+    for (const pdfPath of pdfPaths) {
+      console.log(`Merging PDF: ${pdfPath}`);
+      const pdfBytes = await fs.readFile(pdfPath);
+      const pdf = await PDFDocument.load(pdfBytes);
+      const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+      copiedPages.forEach((page) => mergedPdf.addPage(page));
+    }
+    const mergedPdfBytes = await mergedPdf.save();
+    await fs.writeFile(outputPath, mergedPdfBytes);
+    console.log(`Merged PDF created: ${outputPath}`);
+  } catch (error) {
+    console.error(`Merge error: ${error.message}`);
+    throw new Error(`PDF merge failed: ${error.message}`);
+  }
+}
 
-// Updated Merge Route
+// Merge Route
 router.post('/merge', authenticateToken, upload.array('files'), async (req, res) => {
+  let pdfPaths = [];
+  let outputPath = '';
   try {
     const files = req.files;
     if (!files || files.length === 0) {
       return res.status(400).json({ error: 'No files uploaded' });
     }
 
-    let limits = { fileLimit: 3, pageLimit: 400 }; // Default limits for unauthenticated users
+    let limits = { fileLimit: 3, pageLimit: 400 };
     let isSubscribed = false;
 
     if (req.user) {
@@ -383,10 +312,10 @@ router.post('/merge', authenticateToken, upload.array('files'), async (req, res)
       }
     }
 
-    // Count total pages
     let totalPages = 0;
     for (const file of files) {
-      const ext = path.extname(file.originalname).toLowerCase();
+      const ext = getFileExtension(file);
+      console.log(`Processing file: ${file.originalname}, extension: ${ext}, mimetype: ${file.mimetype}`);
       if (ext === '.pdf') {
         totalPages += await countPdfPages(file.path);
       } else {
@@ -394,11 +323,7 @@ router.post('/merge', authenticateToken, upload.array('files'), async (req, res)
       }
     }
 
-    // Check limits
     if (files.length > limits.fileLimit) {
-      for (const file of files) {
-        await fs.unlink(file.path).catch(() => {});
-      }
       return res.status(403).json({
         error: `File count ${files.length} exceeds limit of ${limits.fileLimit}. ${
           isSubscribed ? 'Upgrade your plan.' : 'Sign up and purchase a plan for higher limits.'
@@ -409,9 +334,6 @@ router.post('/merge', authenticateToken, upload.array('files'), async (req, res)
     }
 
     if (totalPages > limits.pageLimit) {
-      for (const file of files) {
-        await fs.unlink(file.path).catch(() => {});
-      }
       return res.status(403).json({
         error: `Total page count ${totalPages} exceeds limit of ${limits.pageLimit}. ${
           isSubscribed ? 'Upgrade your plan.' : 'Sign up and purchase a plan for higher limits.'
@@ -421,50 +343,146 @@ router.post('/merge', authenticateToken, upload.array('files'), async (req, res)
       });
     }
 
-    const pdfPaths = [];
     for (const file of files) {
-      const ext = path.extname(file.originalname).toLowerCase();
+      const ext = getFileExtension(file);
       const pdfPath = path.join(uploadDir, `${file.filename}.pdf`);
-
-      if (ext === '.pdf') {
-        await fs.copyFile(file.path, pdfPath);
-      } else if (ext === '.docx') {
-        await convertDocxToPDF(file.path, pdfPath);
-      } else if (['.doc', '.rtf', '.ppt', '.pptx', '.xls', '.xlsx'].includes(ext)) {
-        await convertWithLibreOffice(file.path, pdfPath);
-      } else if (ext === '.txt') {
-        await convertTxtToPDF(file.path, pdfPath);
-       } else if (['.jpg', '.jpeg', '.png', '.bmp', '.gif'].includes(ext)) {
-        await convertImageToPDF(file.path, pdfPath);
-       } else {
-        throw new Error(`Unsupported file type: ${ext}`);
-      }
       pdfPaths.push(pdfPath);
+
+      try {
+        if (ext === '.pdf') {
+          await fs.copyFile(file.path, pdfPath);
+        } else if (ext === '.docx') {
+          await convertDocxToPDF(file.path, pdfPath);
+        } else if (['.doc', '.rtf', '.ppt', '.pptx', '.xls', '.xlsx'].includes(ext)) {
+          await convertWithLibreOffice(file.path, pdfPath);
+        } else if (ext === '.txt') {
+          await convertTxtToPDF(file.path, pdfPath);
+        } else if (['.jpg', '.jpeg', '.png', '.bmp', '.gif'].includes(ext)) {
+          await convertImageToPDF(file.path, pdfPath, file.originalname);
+        } else {
+          throw new Error(`Unsupported file type: ${ext || 'unknown'}. Supported formats: .pdf, .doc, .docx, .rtf, .txt, .ppt, .pptx, .xls, .xlsx, .jpg, .jpeg, .png, .bmp, .gif`);
+        }
+        console.log(`Converted file: ${file.originalname} to ${pdfPath}`);
+      } catch (error) {
+        throw new Error(`Conversion failed for ${file.originalname}: ${error.message}`);
+      }
     }
 
-
-    // Merge PDFs
-    const outputPath = path.join(uploadDir, `merged-${Date.now()}.pdf`);
+    outputPath = path.join(uploadDir, `merged-${Date.now()}.pdf`);
     await mergePDFs(pdfPaths, outputPath);
 
-    // Send merged PDF
-    res.download(outputPath, 'merged.pdf', async (err) => {
+    res.download(outputPath, 'merged.pdf', (err) => {
       if (err) {
         console.error('Error sending file:', err);
+        res.status(500).json({ error: `Failed to send merged PDF: ${err.message}` });
       }
-      // Cleanup
+      // Cleanup after sending response
       for (const pdfPath of pdfPaths) {
-        await fs.unlink(pdfPath).catch(() => {});
+        fs.unlink(pdfPath).catch(() => {});
       }
-      await fs.unlink(outputPath).catch(() => {});
-      for (const file of files) {
-        await fs.unlink(file.path).catch(() => {});
+      if (outputPath) {
+        fs.unlink(outputPath).catch(() => {});
+      }
+      for (const file of req.files || []) {
+        fs.unlink(file.path).catch(() => {});
       }
     });
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Merge error:', error);
     res.status(500).json({ error: `Failed to merge files: ${error.message}` });
+    // Cleanup on error
+    for (const pdfPath of pdfPaths) {
+      fs.unlink(pdfPath).catch(() => {});
+    }
+    if (outputPath) {
+      fs.unlink(outputPath).catch(() => {});
+    }
+    for (const file of req.files || []) {
+      fs.unlink(file.path).catch(() => {});
+    }
   }
+});
+
+// Create Subscription
+router.post('/subscription', authenticateToken, async (req, res) => {
+  try {
+    const { planId } = req.body;
+    const userId = req.user.userId;
+    const plan = await Plan.findById(planId);
+    if (!plan) {
+      return res.status(404).json({ error: 'Plan not found' });
+    }
+    const session = await stripe.checkout.sessions.create({
+      customer_email: (await User.findById(userId)).email,
+      payment_method_types: ['card'],
+      line_items: [{ price: plan.stripePriceId, quantity: 1 }],
+      mode: 'subscription',
+      success_url: 'http://localhost:5173/?success=true',
+      cancel_url: 'http://localhost:5173/cancel',
+    });
+    const subscription = new Subscription({
+      userId,
+      planId,
+      stripeSubscriptionId: session.id,
+      status: 'pending',
+      startDate: new Date(),
+    });
+    await subscription.save();
+    res.json({ url: session.url });
+  } catch (error) {
+    res.status(500).json({ error: `Failed to create subscription: ${error.message}` });
+  }
+});
+
+// Stripe Webhook for Subscription Events
+router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+  } catch (err) {
+    return res.status(400).json({ error: `Webhook Error: ${err.message}` });
+  }
+  switch (event.type) {
+    case 'checkout.session.completed': {
+      const session = event.data.object;
+      const subscription = await Subscription.findOne({ stripeSubscriptionId: session.id });
+      if (subscription) {
+        subscription.status = 'active';
+        subscription.stripeSubscriptionId = session.subscription;
+        subscription.endDate = new Date(
+          session.subscription.created * 1000 +
+            (await Plan.findById(subscription.planId)).name === 'weekly'
+            ? 7 * 24 * 60 * 60 * 1000
+            : subscription.planId.name === 'monthly'
+            ? 30 * 24 * 60 * 60 * 1000
+            : 365 * 24 * 60 * 60 * 1000
+        );
+        await subscription.save();
+        const transaction = new Transaction({
+          userId: subscription.userId,
+          subscriptionId: subscription._id,
+          stripePaymentId: session.payment_intent || session.id,
+          amount: session.amount_total / 100,
+          status: 'succeeded',
+        });
+        await transaction.save();
+      }
+      break;
+    }
+    case 'customer.subscription.deleted': {
+      const subscription = await Subscription.findOne({
+        stripeSubscriptionId: event.data.object.id,
+      });
+      if (subscription) {
+        subscription.status = 'canceled';
+        subscription.endDate = new Date();
+        await subscription.save();
+      }
+      break;
+    }
+  }
+  res.json({ received: true });
 });
 
 module.exports = router;
