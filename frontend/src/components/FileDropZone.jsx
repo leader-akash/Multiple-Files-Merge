@@ -33,7 +33,7 @@ const FileDropZone = ({ isDragging, setIsDragging, onFilesSelected }) => {
       <input
         type="file"
         multiple
-        accept=".pdf,.doc,.docx,.rtf,.txt,.ppt,.pptx,.xls,.xlsx"
+        accept=".pdf,.doc,.docx,.rtf,.txt,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.bmp,.gif"
         onChange={handleFileChange}
         className="hidden"
         id="fileInput"
@@ -43,7 +43,7 @@ const FileDropZone = ({ isDragging, setIsDragging, onFilesSelected }) => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
         </svg>
         <p className="text-gray-600 mb-1">{isDragging ? 'Drop files here' : 'Drag and drop files or click to browse'}</p>
-        <p className="text-xs text-gray-400">Supported formats: PDF, DOC, DOCX, RTF, TXT, PPT, PPTX, XLS, XLSX</p>
+        <p className="text-xs text-gray-400"> Supported formats: PDF, DOC, DOCX, RTF, TXT, PPT, PPTX, XLS, XLSX, JPG, JPEG, PNG, BMP, GIF</p>
       </label>
     </div>
   );
