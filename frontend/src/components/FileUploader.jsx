@@ -15,10 +15,6 @@ function FileUploader({ onFilesSelected, files }) {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
       'image/jpeg': ['.jpg', '.jpeg'],
       'image/png': ['.png'],
-      'image/gif': ['.gif'],
-      'image/bmp': ['.bmp'],
-      'image/webp': ['.webp'],
-
     },
     multiple: true,
     onDrop: (acceptedFiles) => {
@@ -39,7 +35,7 @@ function FileUploader({ onFilesSelected, files }) {
         ) : (
           <p className="text-gray-600">
             Drag and drop files here, or click to select files <br />
-            (Supported: .pdf, .doc, .docx, .rtf, .txt, .ppt, .pptx, .xls, .xlsx)
+            (Supported: .pdf, .doc, .docx, .rtf, .txt, .ppt, .pptx, .xls, .xlsx, .jpeg, .jpg, .png)
           </p>
         )}
       </div>

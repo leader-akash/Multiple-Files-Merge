@@ -39,7 +39,7 @@ function HomePage() {
     const handleFiles = useCallback(
         (newFiles) => {
             const validFiles = Array.from(newFiles).filter((file) =>
-                ['.pdf', '.doc', '.docx', '.rtf', '.txt', '.ppt', '.pptx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png', '.bmp', '.gif'].includes(
+                ['.pdf', '.doc', '.docx', '.rtf', '.txt', '.ppt', '.pptx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png'].includes(
                     file.name.toLowerCase().slice(file.name.lastIndexOf('.'))
                 )
             );
@@ -153,7 +153,7 @@ function HomePage() {
             <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
                 <h1 className="text-2xl font-bold mb-6 text-center text-blue-600">PDF Merger</h1>
                 <p className="text-sm text-gray-500 mb-4 text-center">
-                    Combine PDFs, Word, Excel, PowerPoint, and text files into one PDF
+                    Combine PDFs, Word, Excel, PowerPoint, Images and text files into one PDF
                 </p>
 
                 <FileDropZone
