@@ -6,6 +6,7 @@ import MergeButton from '../components/MergeButton';
 import PdfPreviewModal from '../components/PdfPreviewModal';
 import Message from '../components/Message';
 import PurchaseButton from '../components/PurchaseButton';
+import { useNavigate } from 'react-router-dom';
 
 // Set up pdf.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -14,6 +15,8 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 ).toString();
 
 function HomePage() {
+    const navigate = useNavigate();
+
     const [files, setFiles] = useState([]);
     const [isDragging, setIsDragging] = useState(false);
     const [message, setMessage] = useState({ text: '', type: '' });
@@ -46,11 +49,11 @@ function HomePage() {
                 return;
             }
 
-            // if (validFiles.length > 3) {
-            //     showMessage('Only 3 files can be merged at a time. Please purchase a subscription plan for extra files.', 'error');
-            //     setIsPurchaseButton(true);
-            //     return;
-            // }
+            if (validFiles.length > 3) {
+                showMessage('Only 3 files can be merged at a time. Please purchase a subscription plan for extra files.', 'error');
+                setIsPurchaseButton(true);
+                return;
+            }
 
             setIsPurchaseButton(false);
 
@@ -146,42 +149,48 @@ function HomePage() {
     }, [previewUrl]);
 
     return (
-        <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
-            <h1 className="text-2xl font-bold mb-6 text-center text-blue-600">PDF Merger</h1>
-            <p className="text-sm text-gray-500 mb-4 text-center">
-                Combine PDFs, Word, Excel, PowerPoint, and text files into one PDF
-            </p>
+        <div>
+            <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+                <h1 className="text-2xl font-bold mb-6 text-center text-blue-600">PDF Merger</h1>
+                <p className="text-sm text-gray-500 mb-4 text-center">
+                    Combine PDFs, Word, Excel, PowerPoint, and text files into one PDF
+                </p>
 
-            <FileDropZone
-                isDragging={isDragging}
-                setIsDragging={setIsDragging}
-                onFilesSelected={handleFiles}
-            />
-            <FileList files={files} onClear={clearFiles} onRemove={removeFile} />
-            <MergeButton onMerge={handleMerge}  isMerging={isMerging} />
-            <PurchaseButton />
-            
-            <Message message={message} />
-            <PdfPreviewModal
-                isOpen={isPreviewOpen}
-                previewUrl={previewUrl}
-                pageNumber={pageNumber}
-                numPages={numPages}
-                scale={scale}
-                pdfError={pdfError}
-                setPageNumber={setPageNumber}
-                setNumPages={setNumPages}
-                setScale={setScale}
-                onClose={() => {
-                    setIsPreviewOpen(false);
-                    setPreviewUrl(null);
-                    setNumPages(null);
-                    setPageNumber(1);
-                    setScale(1.0);
-                    setPdfError(null);
-                }}
-                onDownload={handleDownload}
-            />
+                <FileDropZone
+                    isDragging={isDragging}
+                    setIsDragging={setIsDragging}
+                    onFilesSelected={handleFiles}
+                />
+                <FileList files={files} onClear={clearFiles} onRemove={removeFile} />
+                <MergeButton onMerge={handleMerge} disabled={!files?.length} isMerging={isMerging} />
+                <PurchaseButton />
+
+                <Message message={message} />
+                <PdfPreviewModal
+                    isOpen={isPreviewOpen}
+                    previewUrl={previewUrl}
+                    pageNumber={pageNumber}
+                    numPages={numPages}
+                    scale={scale}
+                    pdfError={pdfError}
+                    setPageNumber={setPageNumber}
+                    setNumPages={setNumPages}
+                    setScale={setScale}
+                    onClose={() => {
+                        setIsPreviewOpen(false);
+                        setPreviewUrl(null);
+                        setNumPages(null);
+                        setPageNumber(1);
+                        setScale(1.0);
+                        setPdfError(null);
+                    }}
+                    onDownload={handleDownload}
+                />
+            </div>
+            <div className='flex mt-4 justify-between'>
+                <button onClick={() => navigate("/login")}>Login</button>
+                <button onClick={() => navigate("/signup")}>Signup</button>
+            </div>
         </div>
     );
 }
