@@ -36,7 +36,7 @@ function HomePage() {
     const handleFiles = useCallback(
         (newFiles) => {
             const validFiles = Array.from(newFiles).filter((file) =>
-                ['.pdf', '.doc', '.docx', '.rtf', '.txt', '.ppt', '.pptx', '.xls', '.xlsx'].includes(
+                ['.pdf', '.doc', '.docx', '.rtf', '.txt', '.ppt', '.pptx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png', '.bmp', '.gif'].includes(
                     file.name.toLowerCase().slice(file.name.lastIndexOf('.'))
                 )
             );
@@ -46,11 +46,11 @@ function HomePage() {
                 return;
             }
 
-            if (validFiles.length > 3) {
-                showMessage('Only 3 files can be merged at a time. Please purchase a subscription plan for extra files.', 'error');
-                setIsPurchaseButton(true);
-                return;
-            }
+            // if (validFiles.length > 3) {
+            //     showMessage('Only 3 files can be merged at a time. Please purchase a subscription plan for extra files.', 'error');
+            //     setIsPurchaseButton(true);
+            //     return;
+            // }
 
             setIsPurchaseButton(false);
 
@@ -98,7 +98,7 @@ function HomePage() {
             showMessage('Files merged successfully!', 'success');
         } catch (error) {
             console.log('errrrr', error)
-            setPdfError(error.message);
+            setPdfError(error?.message || error?.error);
             showMessage(`Failed to merge files: ${error.message}`, 'error');
         } finally {
             setIsMerging(false);
@@ -158,7 +158,7 @@ function HomePage() {
                 onFilesSelected={handleFiles}
             />
             <FileList files={files} onClear={clearFiles} onRemove={removeFile} />
-            <MergeButton onMerge={handleMerge} disabled={files.length > 3 || files?.length === 0 || isMerging} isMerging={isMerging} />
+            <MergeButton onMerge={handleMerge}  isMerging={isMerging} />
             <PurchaseButton />
             
             <Message message={message} />
