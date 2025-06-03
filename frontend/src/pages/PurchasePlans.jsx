@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom"
 import axios from 'axios';
 
 const PurchasePlans = () => {
+    const baseUrl = import.meta.env.VITE_APP_BACKEND_API_URL
 
     const navigate = useNavigate();
 
@@ -40,7 +41,7 @@ const PurchasePlans = () => {
 
     const fetchPlans = async () => {
         try {
-            const response = await axios.get('http://localhost:5000/api/plans');
+            const response = await axios.get(`${baseUrl}/api/plans`);
             console.log('called')
             console.log('response', response)
             setPackages(response.data);

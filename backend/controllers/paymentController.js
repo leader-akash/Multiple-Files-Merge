@@ -5,6 +5,7 @@ const stripe = Stripe(process.env.STRIPE_KEY);
 
 const appearance = { theme: 'flat',
   variables: { colorPrimaryText: '#262626' } };
+const baseUrl = process.env.REACT_APP_URL
 
 const createPayment = async (req, res) => {
   const { amount } = req.body;
@@ -23,8 +24,8 @@ const createPayment = async (req, res) => {
       },
     ],
     mode: 'payment',
-    success_url: 'http://localhost:5173/',
-    cancel_url: 'http://localhost:5173/cancel',
+    success_url:`${baseUrl}/?success=true`,
+    cancel_url: `${baseUrl}/cancel`,
   });
 
   res.status(200).json({ url: session.url });

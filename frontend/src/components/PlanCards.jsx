@@ -5,6 +5,8 @@ import { useState } from "react";
 
 import { Link } from 'react-router-dom';
 
+const baseUrl = import.meta.env.VITE_APP_BACKEND_API_URL
+
 const PricingPlan = ({
   data
 }) => {
@@ -17,7 +19,7 @@ const PricingPlan = ({
           userId :"6836bb6c9fca50c55ca90ffe"}
 
         try {
-            const response = await axios.post(`http://localhost:5000/api/subscription`, { planId, user });
+            const response = await axios.post(` ${baseUrl}/api/subscription`, { planId, user });
 
             // Assuming backend sends session URL back in response.data.url
             const sessionUrl = response.data.url;

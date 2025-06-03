@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 export default function Login() {
+const baseUrl = import.meta.env.VITE_APP_BACKEND_API_URL
+
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -37,7 +39,7 @@ export default function Login() {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/login', {
+      const response = await fetch(`${baseUrl}/api/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -2,6 +2,8 @@ const Stripe = require('stripe');
 const stripe = Stripe(process.env.STRIPE_KEY);
 const { User, Subscription, Plan, Transaction } = require('../modal/models');
 
+const baseUrl = process.env.REACT_APP_URL
+
 const createSubscription = async (req, res) => {
   try {
     const { planId } = req.body;
@@ -15,8 +17,8 @@ const createSubscription = async (req, res) => {
       payment_method_types: ['card'],
       line_items: [{ price: plan.stripePriceId, quantity: 1 }],
       mode: 'subscription',
-      success_url: 'http://localhost:5173/?success=true',
-      cancel_url: 'http://localhost:5173/cancel',
+      success_url: `${baseUrl}/?success=true`,
+      cancel_url: `${baseUrl}/cancel`,
     });
     const subscription = new Subscription({
       userId,

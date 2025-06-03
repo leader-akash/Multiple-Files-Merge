@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 export default function Signup() {
+const baseUrl = import.meta.env.VITE_APP_BACKEND_API_URL
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -53,7 +55,7 @@ export default function Signup() {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/signup', {
+      const response = await fetch(`${baseUrl}/api/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
