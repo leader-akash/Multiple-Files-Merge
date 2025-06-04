@@ -187,10 +187,7 @@ function HomePage() {
                     onDownload={handleDownload}
                 />
             </div>
-            <div className='flex mt-4 justify-between'>
-                <button onClick={() => navigate("/login")}>Login</button>
-                <button onClick={() => navigate("/signup")}>Signup</button>
-            </div>
+          
         </div>
     );
 }

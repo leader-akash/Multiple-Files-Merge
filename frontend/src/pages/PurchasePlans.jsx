@@ -1,98 +1,48 @@
-import React, { useEffect } from 'react'
-import Pricing from '../components/PlanCards'
-import { useState } from 'react';
-import PricingPlan from '../components/PlanCards';
-import { IoArrowBack } from "react-icons/io5";
-import { useNavigate } from "react-router-dom"
-import axios from 'axios';
+// src/pages/PurchasePlans.tsx
+import { useNavigate } from 'react-router-dom';
+import { IoArrowBack } from 'react-icons/io5';
+import PricingPlan from '../components/PricingPlan';
+import { usePlans } from '../hooks/usePlans';
 
-const PurchasePlans = () => {
-    const baseUrl = import.meta.env.VITE_APP_BACKEND_API_URL
+export default function PurchasePlans() {
+  const navigate = useNavigate();
+  const { data: packages, isPending, error } = usePlans();
 
-    const navigate = useNavigate();
+  return (
+    <section id="pricing" className="py-20 ">
+      <div className="container mx-auto px-4">
+        <button
+          className="mb-6 flex items-center px-3 py-2 bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
+          onClick={() => navigate('/')}
+        >
+          <IoArrowBack className="mr-2" />
+          Back
+        </button>
+        <div className="text-center max-w-3xl mx-auto mb-16">
+          <h2 className="text-3xl sm:text-4xl font-bold mb-4">
+            Simple, <span className="text-purple-600">Transparent Pricing</span>
+          </h2>
+          <p className="text-xl text-gray-600">Choose the plan that's right for your content needs</p>
+        </div>
 
-    const plans = [
-        {
-            planId: 1,
-            title: "Weekly",
-            price: 5,
+        {isPending && (
+          <div className="text-center text-gray-600">Loading plans...</div>
+        )}
+        {error && (
+          <div className="text-center text-red-600">Error: {error.message}</div>
+        )}
+        {packages && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            {packages.map((plan) => (
+              <PricingPlan key={plan._id} data={plan} />
+            ))}
+          </div>
+        )}
 
-            buttonName: "Select Plan"
-        },
-        {
-            planId: 2,
-            title: "Monthly",
-            price: 10,
-            isPopular: true,
-            buttonName: "Select Plan"
-        },
-        {
-            planId: 3,
-            title: "Yearly",
-            price: 50,
-            buttonName: "Select Plan"
-        }
-    ];
-
-    const [packages, setPackages] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-
-
-    const fetchPlans = async () => {
-        try {
-            const response = await axios.get(`${baseUrl}/api/plans`);
-            console.log('called')
-            console.log('response', response)
-            setPackages(response.data);
-            setLoading(false);
-        } catch (err) {
-            setError('Failed to load plans', err);
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchPlans();
-    }, []);
-
-    console.log('packages', packages)
-
-
-
-    return (
-        <section id="pricing" className="py-20">
-            <button className='border flex items-center px-2 bg-green-100 ' onClick={() => navigate("/")}>
-                <IoArrowBack />
-                Back
-            </button>
-            <div className="container mx-auto px-4">
-                <div className="text-center max-w-3xl mx-auto mb-16">
-                    <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-                        Simple, <span className="heading-gradient">Transparent Pricing</span>
-                    </h2>
-                    <p className="text-xl text-gray-600">
-                        Choose the plan that's right for your content needs
-                    </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-                    {packages.map((plan, index) => (
-                        <PricingPlan
-                            key={index}
-                            data={plan}
-                        />
-                    ))}
-                </div>
-
-                <div className="mt-16 text-center max-w-2xl mx-auto">
-                    <p className="text-gray-600">
-                        All rights reserved.
-                    </p>
-                </div>
-            </div>
-        </section>
-    )
+        <div className="mt-16 text-center max-w-2xl mx-auto">
+          <p className="text-gray-600">All rights reserved.</p>
+        </div>
+      </div>
+    </section>
+  );
 }
-
-export default PurchasePlans
