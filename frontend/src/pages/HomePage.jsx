@@ -49,11 +49,11 @@ function HomePage() {
                 return;
             }
 
-            if (validFiles.length > 3) {
-                showMessage('Only 3 files can be merged at a time. Please purchase a subscription plan for extra files.', 'error');
-                setIsPurchaseButton(true);
-                return;
-            }
+            // if (validFiles.length > 3) {
+            //     showMessage('Only 3 files can be merged at a time. Please purchase a subscription plan for extra files.', 'error');
+            //     setIsPurchaseButton(true);
+            //     return;
+            // }
 
             setIsPurchaseButton(false);
 
