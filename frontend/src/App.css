@@ -1,8 +1,13 @@
 @import "tailwindcss";
 /* App-specific styles */
-#root {
+/* #root {
   margin: 0 auto;
   padding: 0;
+  width: 100vw !important;
+} */
+
+.app-width{
+  width:  100vw !important;
 }
 
 /* Custom scrollbar */
@@ -24,6 +29,8 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
 }
+
+
 
 /* Animation for file drop zone */
 @keyframes pulse {

@@ -1,20 +1,24 @@
+// src/components/Login.tsx
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import { useLogin } from '../hooks/useLogin';
+
 
 export default function Login() {
   const [formData, setFormData] = useState({
     email: '',
-    password: ''
+    password: '',
   });
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const { mutate: login, isPending, error: mutationError } = useLogin();
   const navigate = useNavigate();
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
     setError('');
   };
@@ -23,48 +27,39 @@ export default function Login() {
     setShowPassword(!showPassword);
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     if (!formData.email || !formData.password) {
       setError('All fields are required');
       return;
     }
-    
+
     if (!/^\S+@\S+\.\S+$/.test(formData.email)) {
       setError('Please provide a valid email address');
       return;
     }
 
-    try {
-      const response = await fetch('http://localhost:5000/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+    login(
+      { email: formData.email, password: formData.password },
+      {
+        onError: (err) => {
+          setError(err.message || 'Login failed');
         },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
-        navigate('/');
-      } else {
-        const data = await response.json();
-        setError(data.message || 'Login failed');
       }
-    } catch (err) {
-      setError('Something went wrong. Please try again.');
-    }
+    );
   };
 
   return (
-    <div className=" ">
-            <button className='my-4' onClick={() => navigate(-1)}>Back</button>
-
+    <div>
+      <button className="my-4 bg-gray-200 rounded" onClick={() => navigate(-1)}>
+        Back
+      </button>
       <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
         <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Login</h2>
-        {error && (
+        {(error || mutationError) && (
           <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
-            {error}
+            {error || mutationError?.message}
           </div>
         )}
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -107,9 +102,10 @@ export default function Login() {
           </div>
           <button
             type="submit"
-            className="w-full py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            disabled={isPending}
+            className="w-full py-2 px-4  text-blue-500 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400"
           >
-            Login
+            {isPending ? 'Logging in...' : 'Login'}
           </button>
         </form>
         <p className="mt-4 text-center text-sm text-gray-600">
@@ -122,6 +118,3 @@ export default function Login() {
     </div>
   );
 }
-
-
-
