@@ -1,7 +1,7 @@
-const jwt = require('jsonwebtoken');
-
+const jwt = require("jsonwebtoken");
 function authenticateToken(req, res, next) {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+  const authHeader = req.header("Authorization") || "";
+  const token = authHeader.split(" ")[1] || null;
   if (!token) {
     req.user = null;
     return next();
@@ -11,7 +11,7 @@ function authenticateToken(req, res, next) {
     req.user = decoded;
     next();
   } catch (error) {
-    res.status(401).json({ error: 'Invalid token' });
+    res.status(401).json({ error: "Invalid token" });
   }
 }
 
