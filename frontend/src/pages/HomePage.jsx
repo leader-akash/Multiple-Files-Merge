@@ -6,9 +6,8 @@ import MergeButton from "../components/MergeButton";
 import PdfPreviewModal from "../components/PdfPreviewModal";
 import Message from "../components/Message";
 import PurchaseButton from "../components/PurchaseButton";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-
+import { useSubscriptionStatus } from "../hooks/useSubscritionStatus";
 // Set up pdf.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -16,7 +15,6 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 ).toString();
 
 function HomePage() {
-  const navigate = useNavigate();
   const { data: auth } = useAuth();
   const [files, setFiles] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -29,7 +27,10 @@ function HomePage() {
   const [numPages, setNumPages] = useState(null);
   const [scale, setScale] = useState(1.0);
   const [isPurchaseButton, setIsPurchaseButton] = useState(false);
+  const userId = auth?.user?.id;
+  const token = auth?.token;
 
+  const { data: subscriptionData } = useSubscriptionStatus(userId, token);
   const showMessage = useCallback((text, type = "info") => {
     setMessage({ text, type });
     if (!isPurchaseButton)
@@ -154,7 +155,7 @@ function HomePage() {
 
   useEffect(() => {
     // Reset preview state when files change
-    if (files.length > 3) {
+    if (files.length > 3 && !subscriptionData?.active) {
       showMessage(
         "Only 3 files will be merged, Purchase a subscription for more than 3 files merge",
         "info"
@@ -191,7 +192,7 @@ function HomePage() {
           disabled={!files?.length}
           isMerging={isMerging}
         />
-        <PurchaseButton />
+        {(!auth || !subscriptionData?.active) && <PurchaseButton />}
 
         <Message message={message} />
         <PdfPreviewModal
