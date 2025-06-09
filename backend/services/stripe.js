@@ -31,4 +31,41 @@ const fetchSubscriptionWithId = async (customerId) => {
   }
 };
 
-module.exports = { Stripe, fetchSubscriptionWithId };
+const cancelAllSubscription = async (customerId) => {
+  try {
+    if (!process.env.STRIPE_KEY)
+      throw new Error("Stripe configuration missing.");
+    if (!customerId) throw new Error("Customer ID is required.");
+
+    const subscriptions = await Stripe.subscriptions.list({
+      customer: customerId,
+    });
+
+    if (!subscriptions.data.length) {
+      console.log(`ℹ️ No subscriptions found for customer: ${customerId}`);
+      return [];
+    }
+
+    const cancelPromises = subscriptions.data.map((sub) => {
+      console.log("🚀 ~ cancelAllSubscription ~ sub:", sub);
+      return Stripe.subscriptions
+        .cancel(sub.id)
+        .then((result) => {
+          console.log(`✅ Canceled subscription: ${sub.id}`);
+          return result;
+        })
+        .catch((err) => {
+          console.error(`❌ Failed to cancel ${sub.id}:`, err.message);
+          return null;
+        });
+    });
+
+    const results = await Promise.all(cancelPromises);
+    console.log("🚀 ~ cancelAllSubscription ~ results:", results);
+  } catch (error) {
+    console.error("🚨 cancelAllSubscription error:", error.message);
+    throw error;
+  }
+};
+
+module.exports = { Stripe, fetchSubscriptionWithId, cancelAllSubscription };

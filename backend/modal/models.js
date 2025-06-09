@@ -103,12 +103,12 @@ const planSchema = new mongoose.Schema({
   fileLimit: {
     type: Number,
     required: [true, "File limit is required"],
-    default: 100,
+    default: Number.MAX_SAFE_INTEGER,
   },
   pageLimit: {
     type: Number,
     required: [true, "Page limit is required"],
-    default: 400,
+    default: Number.MAX_SAFE_INTEGER,
   },
   stripePriceId: {
     type: String,

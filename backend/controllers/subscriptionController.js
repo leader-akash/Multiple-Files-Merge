@@ -1,7 +1,10 @@
 const Stripe = require("stripe");
 const stripe = Stripe(process.env.STRIPE_KEY);
 const { User, Subscription, Plan, Transaction } = require("../modal/models");
-const { fetchSubscriptionWithId } = require("../services/stripe");
+const {
+  fetchSubscriptionWithId,
+  cancelAllSubscription,
+} = require("../services/stripe");
 const baseUrl = process.env.REACT_APP_URL;
 
 const createSubscription = async (req, res) => {
@@ -24,6 +27,7 @@ const createSubscription = async (req, res) => {
       user.stripeCustomerId = customer.id;
       await user.save(); // Save Stripe customer ID to user
     }
+    await cancelAllSubscription(stripeCustomerId);
     const session = await stripe.checkout.sessions.create({
       customer: stripeCustomerId,
       payment_method_types: ["card"],
