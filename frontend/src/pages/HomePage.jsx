@@ -8,6 +8,7 @@ import Message from "../components/Message";
 import PurchaseButton from "../components/PurchaseButton";
 import { useAuth } from "../hooks/useAuth";
 import { useSubscriptionStatus } from "../hooks/useSubscritionStatus";
+import { useSearchParams } from "react-router-dom";
 // Set up pdf.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -29,8 +30,18 @@ function HomePage() {
   const [isPurchaseButton, setIsPurchaseButton] = useState(false);
   const userId = auth?.user?.id;
   const token = auth?.token;
+  const [searchParams] = useSearchParams();
+  const success = searchParams.get("success") === "true";
 
-  const { data: subscriptionData } = useSubscriptionStatus(userId, token);
+  const { data: subscriptionData, refetch: fetchSubscriptionData } =
+    useSubscriptionStatus(userId, token);
+
+  useEffect(() => {
+    if (success && auth) {
+      fetchSubscriptionData();
+    }
+  }, [success, auth, fetchSubscriptionData]);
+
   const showMessage = useCallback((text, type = "info") => {
     setMessage({ text, type });
     if (!isPurchaseButton)

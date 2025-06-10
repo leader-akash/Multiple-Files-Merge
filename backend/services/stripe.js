@@ -47,7 +47,6 @@ const cancelAllSubscription = async (customerId) => {
     }
 
     const cancelPromises = subscriptions.data.map((sub) => {
-      console.log("🚀 ~ cancelAllSubscription ~ sub:", sub);
       return Stripe.subscriptions
         .cancel(sub.id)
         .then((result) => {
@@ -60,8 +59,7 @@ const cancelAllSubscription = async (customerId) => {
         });
     });
 
-    const results = await Promise.all(cancelPromises);
-    console.log("🚀 ~ cancelAllSubscription ~ results:", results);
+    await Promise.all(cancelPromises);
   } catch (error) {
     console.error("🚨 cancelAllSubscription error:", error.message);
     throw error;

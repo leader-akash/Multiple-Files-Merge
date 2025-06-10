@@ -171,7 +171,7 @@ const customerSubscriptionStatus = async (req, res) => {
       subscription: subscription,
     });
   } catch (error) {
-    console.error("🚀 ~ customerSubscriptionStatus ~ error:", error);
+    console.error("Error in fetching subscription status: ", error);
     return res
       .status(500)
       .json({ message: "Internal server error", error: error.message });
