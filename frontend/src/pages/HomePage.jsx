@@ -9,6 +9,7 @@ import PurchaseButton from "../components/PurchaseButton";
 import { useAuth } from "../hooks/useAuth";
 import { useSubscriptionStatus } from "../hooks/useSubscritionStatus";
 import { useSearchParams } from "react-router-dom";
+import { mergeFiles } from "../api/mergeApi";
 // Set up pdf.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -103,28 +104,8 @@ function HomePage() {
       const formData = new FormData();
       files.forEach((file) => formData.append("files", file));
       const token = auth?.token;
-      const response = await fetch("http://localhost:5000/api/merge", {
-        method: "POST",
-        body: formData,
-        headers: {
-          Authorization: `Bearer ${token || ""}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        setIsPurchaseButton(true);
-        throw new Error(
-          errorData.error || `Server responded with ${response.status}`
-        );
-      }
-
-      const blob = await response.blob();
-      if (blob.type !== "application/pdf") {
-        throw new Error("The merged file is not a valid PDF");
-      }
-
-      const url = URL.createObjectURL(blob);
+      const response = await mergeFiles(formData, token);
+      const url = URL.createObjectURL(response);
       setPreviewUrl(url);
       setIsPreviewOpen(true);
       setPageNumber(1);
